@@ -155,7 +155,7 @@ const statusLabels: Record<ResourceStatus, string> = {
 
 const courseColors = ["#5b8def", "#14a38b", "#d97706", "#c2416b", "#6d5bd0", "#d6ff72"];
 const detailViewKeys: ViewKey[] = ["today", "dump", "inbox", "courses", "library", "goals", "review"];
-const statsViewKeys: ViewKey[] = ["today", "inbox", "library", "review"];
+const statsViewKeys: ViewKey[] = ["today", "library", "review"];
 const captureViewKeys: ViewKey[] = ["today", "dump", "inbox", "library"];
 
 export function App() {
@@ -996,6 +996,7 @@ export function App() {
                     selectedId={selected?.id}
                     onSelect={setSelectedId}
                     onStatus={(id, status) => updateResource(id, { status })}
+                    simple={view === "inbox"}
                   />
                 )}
               </section>
@@ -1011,7 +1012,7 @@ export function App() {
                   onRevised={markRevised}
                   onDelete={deleteResource}
                   onOpen={openResource}
-                  simple={view === "dump"}
+                  simple={view === "dump" || view === "inbox"}
                 />
               )}
             </div>
@@ -1317,6 +1318,7 @@ function ResourceList({
   selectedId,
   onSelect,
   onStatus,
+  simple = false,
 }: {
   title: string;
   resources: Resource[];
@@ -1324,6 +1326,7 @@ function ResourceList({
   selectedId?: string;
   onSelect: (id: string) => void;
   onStatus: (id: string, status: ResourceStatus) => void;
+  simple?: boolean;
 }) {
   return (
     <div>
@@ -1348,19 +1351,23 @@ function ResourceList({
                   {isDue(item.nextReviewAt) && <span className="due">Review due</span>}
                 </div>
                 <h3>{item.title}</h3>
-                <p>{item.notes || item.resumeLabel || "No notes yet"}</p>
-                <div className="resource-footer">
-                  <div className="progress-line compact">
-                    <span style={{ width: `${item.progress}%` }} />
-                  </div>
-                  <span>{item.progress}%</span>
+                <p>{simple ? item.sourceUrl || "Captured. Decide later." : item.notes || item.resumeLabel || "No notes yet"}</p>
+                <div className={simple ? "resource-footer simple" : "resource-footer"}>
+                  {!simple && (
+                    <>
+                      <div className="progress-line compact">
+                        <span style={{ width: `${item.progress}%` }} />
+                      </div>
+                      <span>{item.progress}%</span>
+                    </>
+                  )}
                   <button
                     onClick={(event) => {
                       event.stopPropagation();
-                      onStatus(item.id, item.status === "done" ? "active" : "done");
+                      onStatus(item.id, item.status === "done" ? (simple ? "inbox" : "active") : "done");
                     }}
                   >
-                    {item.status === "done" ? "Reopen" : "Done"}
+                    {simple ? (item.status === "done" ? "Mark not finished" : "Mark finished") : item.status === "done" ? "Reopen" : "Done"}
                   </button>
                 </div>
               </div>
@@ -1406,7 +1413,7 @@ function DetailPanel({
       <aside className="detail-panel empty">
         <NotebookPen size={32} />
         <h2>Select an item</h2>
-        <p>Your notes, progress, resume point, and checklist will live here.</p>
+        <p>{simple ? "Select a capture to open it, finish it, or remove it." : "Your notes, progress, resume point, and checklist will live here."}</p>
       </aside>
     );
   }

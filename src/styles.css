@@ -696,6 +696,19 @@ button {
   background: var(--button-soft);
 }
 
+.resource-footer.simple {
+  grid-template-columns: 1fr;
+}
+
+.resource-footer.simple button {
+  width: 100%;
+  min-height: 38px;
+  color: var(--accent-text);
+  background: var(--accent-3);
+  font-weight: 800;
+  white-space: normal;
+}
+
 .progress-line {
   height: 9px;
   overflow: hidden;
