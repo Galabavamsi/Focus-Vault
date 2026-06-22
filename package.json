@@ -1,0 +1,79 @@
+{
+  "name": "focus-vault",
+  "version": "0.1.0",
+  "description": "A local-first desktop study vault for links, coursework, tasks, activity tracking, and an AI helper.",
+  "license": "MIT",
+  "author": "Galaba Vamsi",
+  "homepage": "https://github.com/Galabavamsi/Focus-Vault#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Galabavamsi/Focus-Vault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Galabavamsi/Focus-Vault/issues"
+  },
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "desktop": "npm run build && electron .",
+    "desktop:dev": "set FOCUSVAULT_DEV=1&& electron .",
+    "package:win": "npm run build && electron-builder --win nsis portable --publish never",
+    "package:dir": "npm run build && electron-builder --dir --publish never"
+  },
+  "keywords": [
+    "study",
+    "notes",
+    "knowledge-management",
+    "todo",
+    "electron",
+    "react",
+    "local-first"
+  ],
+  "build": {
+    "appId": "dev.focusvault.app",
+    "productName": "FocusVault",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/app-icon.ico",
+      "public/app-icon.png",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    },
+    "win": {
+      "icon": "public/app-icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^39.8.5",
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.6.3",
+    "vite": "^6.4.3"
+  }
+}
