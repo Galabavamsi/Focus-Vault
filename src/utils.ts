@@ -29,10 +29,21 @@ export function inferType(input: string, fallback: ResourceType = "note"): Resou
   const value = input.toLowerCase();
   if (value.includes("youtube.com/playlist") || value.includes("list=")) return "playlist";
   if (value.includes("youtube.com") || value.includes("youtu.be")) return "video";
+  if (value.includes("drive.google.com") || value.includes("docs.google.com")) return "file";
   if (value.endsWith(".pdf")) return "pdf";
   if (value.includes("arxiv.org") || value.includes("doi.org")) return "paper";
   if (value.startsWith("http")) return "article";
   return fallback;
+}
+
+export function isGoogleWorkspaceUrl(url?: string) {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    return hostname === "drive.google.com" || hostname.endsWith(".google.com") && hostname.startsWith("docs.");
+  } catch {
+    return false;
+  }
 }
 
 export function youtubeThumbnail(url?: string) {
@@ -58,6 +69,7 @@ export function faviconFor(url?: string) {
 }
 
 export function thumbnailFor(type: ResourceType, url?: string) {
+  if (isGoogleWorkspaceUrl(url)) return "google-drive";
   return youtubeThumbnail(url) ?? faviconFor(url) ?? type;
 }
 

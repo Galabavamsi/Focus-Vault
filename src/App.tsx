@@ -262,6 +262,14 @@ export function App() {
     if (!payload) return;
 
     const resource = resourceFromCapture(payload);
+    const existing = resource.sourceUrl ? data.resources.find((item) => item.sourceUrl === resource.sourceUrl) : undefined;
+    if (existing) {
+      setSelectedId(existing.id);
+      setView("dump");
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
     setData((current) => {
       if (resource.sourceUrl && current.resources.some((item) => item.sourceUrl === resource.sourceUrl)) {
         return current;
@@ -286,7 +294,7 @@ export function App() {
     setSelectedId(resource.id);
     setView("dump");
     window.history.replaceState({}, "", window.location.pathname);
-  }, []);
+  }, [data.resources]);
 
   const selected = data.resources.find((item) => item.id === selectedId) ?? data.resources[0];
 
@@ -327,6 +335,8 @@ export function App() {
       return inView && inSearch;
     });
   }, [data.resources, query, view]);
+
+  const visibleSelected = filteredResources.some((item) => item.id === selected?.id) ? selected : undefined;
 
   function commitData(updater: (current: AppData) => AppData) {
     setData((current) => updater(current));
@@ -389,6 +399,14 @@ export function App() {
   }
 
   function addResource(resource: Resource) {
+    const existing = resource.sourceUrl ? data.resources.find((item) => item.sourceUrl === resource.sourceUrl) : undefined;
+    if (existing) {
+      setSelectedId(existing.id);
+      setView("dump");
+      setNotice("That link is already saved.");
+      return;
+    }
+
     commitData((current) =>
       appendActivity(
         { ...current, resources: [resource, ...current.resources] },
@@ -527,7 +545,8 @@ export function App() {
 
     try {
       if (resource.fileMeta?.id) await deleteStoredFile(resource.fileMeta.id);
-      const nextResource = data.resources.find((item) => item.id !== id);
+      const nextVisibleResource = filteredResources.find((item) => item.id !== id);
+      const nextResource = nextVisibleResource ?? data.resources.find((item) => item.id !== id);
       commitData((current) => ({ ...current, resources: current.resources.filter((item) => item.id !== id) }));
       setSelectedId(nextResource?.id ?? "");
       setNotice("Item deleted.");
@@ -775,7 +794,7 @@ export function App() {
   const isAssistantView = view === "assistant";
   const showCapture = captureViewKeys.includes(view);
   const showStats = statsViewKeys.includes(view);
-  const showDetail = detailViewKeys.includes(view) && Boolean(selected);
+  const showDetail = detailViewKeys.includes(view) && Boolean(visibleSelected);
 
   return (
     <div className={isAssistantView ? "app-shell assistant-mode" : "app-shell"}>
@@ -983,7 +1002,7 @@ export function App() {
 
               {showDetail && (
                 <DetailPanel
-                  resource={selected}
+                  resource={visibleSelected}
                   courses={data.courses}
                   onUpdate={updateResource}
                   onAddCheck={addChecklistItem}
@@ -2082,6 +2101,7 @@ function Thumbnail({ item, large = false }: { item: Resource; large?: boolean })
 }
 
 function ResourceIcon({ item }: { item: Resource }) {
+  if (item.thumbnail === "google-drive") return <FolderPlus size={18} />;
   if (item.type === "image") return <Image size={18} />;
   if (item.type === "pdf" || item.type === "paper") return <FileText size={18} />;
   if (item.type === "slides") return <FileImage size={18} />;

@@ -1091,13 +1091,22 @@ button {
 
 .dump-card {
   display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
   gap: 10px;
+  align-items: start;
   padding: 10px;
   border-radius: 8px;
   box-shadow: none;
   transition:
     border-color 150ms ease,
     transform 150ms ease;
+}
+
+.dump-card .thumbnail {
+  width: 64px;
+  min-width: 64px;
+  height: 48px;
+  aspect-ratio: auto;
 }
 
 .dump-card:hover {
@@ -1119,8 +1128,11 @@ button {
 
 .dump-card-body h4 {
   margin: 0;
+  overflow: hidden;
   font-size: 15px;
   line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dump-card-body p {
