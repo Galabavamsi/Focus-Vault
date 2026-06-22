@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Launch-FocusVault.ps1"
+wscript.exe "%~dp0Start-FocusVault.vbs"
