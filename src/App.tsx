@@ -155,7 +155,7 @@ const statusLabels: Record<ResourceStatus, string> = {
 
 const courseColors = ["#5b8def", "#14a38b", "#d97706", "#c2416b", "#6d5bd0", "#d6ff72"];
 const detailViewKeys: ViewKey[] = ["today", "dump", "inbox", "courses", "library", "goals", "review"];
-const statsViewKeys: ViewKey[] = ["today", "dump", "inbox", "library", "review"];
+const statsViewKeys: ViewKey[] = ["today", "inbox", "library", "review"];
 const captureViewKeys: ViewKey[] = ["today", "dump", "inbox", "library"];
 
 export function App() {
@@ -1011,6 +1011,7 @@ export function App() {
                   onRevised={markRevised}
                   onDelete={deleteResource}
                   onOpen={openResource}
+                  simple={view === "dump"}
                 />
               )}
             </div>
@@ -1075,9 +1076,8 @@ function LinkDump({
   onSelect: (id: string) => void;
   onUpdate: (id: string, patch: Partial<Resource>) => void;
 }) {
-  const waiting = resources.filter((item) => item.status === "inbox" || item.status === "queued");
-  const active = resources.filter((item) => item.status === "active");
-  const saved = resources.filter((item) => item.status === "paused" || item.status === "done");
+  const unfinished = resources.filter((item) => item.status !== "done");
+  const finished = resources.filter((item) => item.status === "done");
 
   return (
     <div className="dump-area">
@@ -1087,35 +1087,25 @@ function LinkDump({
           <p>Save now, understand later. This is for random videos, playlists, articles, papers, ideas, tools, and future study paths.</p>
         </div>
         <div className="dump-metrics">
-          <span>{waiting.length} waiting</span>
-          <span>{active.length} studying</span>
-          <span>{saved.length} parked</span>
+          <span>{unfinished.length} not finished</span>
+          <span>{finished.length} finished</span>
         </div>
       </div>
 
       <div className="dump-lanes">
         <DumpLane
-          title="Saved for later"
-          hint="Fresh captures you do not want to forget."
-          resources={waiting}
+          title="Not finished"
+          hint="Saved things you still want to open, read, watch, or decide on."
+          resources={unfinished}
           courses={courses}
           selectedId={selectedId}
           onSelect={onSelect}
           onUpdate={onUpdate}
         />
         <DumpLane
-          title="Studying now"
-          hint="Promoted items you want to actively work through."
-          resources={active}
-          courses={courses}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          onUpdate={onUpdate}
-        />
-        <DumpLane
-          title="Parked or done"
-          hint="Finished, paused, or archived knowledge items."
-          resources={saved}
+          title="Finished"
+          hint="Things you already handled."
+          resources={finished}
           courses={courses}
           selectedId={selectedId}
           onSelect={onSelect}
@@ -1166,7 +1156,7 @@ function DumpLane({
                 <div className="resource-topline">
                   <span>{typeLabels[item.type]}</span>
                   {course && <span>{course.title}</span>}
-                  {item.status === "active" && <span className="studying">Studying</span>}
+                  {item.status === "done" && <span className="studying">Finished</span>}
                 </div>
                 <h4>{item.title}</h4>
                 <p>{item.notes || item.resumeLabel || item.sourceUrl || "Captured. Not organized yet."}</p>
@@ -1175,28 +1165,13 @@ function DumpLane({
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onUpdate(item.id, { status: "active", group: item.group ?? "Knowledge dump" });
+                      onUpdate(item.id, {
+                        status: item.status === "done" ? "inbox" : "done",
+                        group: item.group ?? "Knowledge dump",
+                      });
                     }}
                   >
-                    Study
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onUpdate(item.id, { status: "queued", nextReviewAt: dateInDays(3), group: item.group ?? "Knowledge dump" });
-                    }}
-                  >
-                    Review later
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onUpdate(item.id, { status: "done" });
-                    }}
-                  >
-                    Done
+                    {item.status === "done" ? "Mark not finished" : "Mark finished"}
                   </button>
                 </div>
               </div>
@@ -1407,6 +1382,7 @@ function DetailPanel({
   onRevised,
   onDelete,
   onOpen,
+  simple = false,
 }: {
   resource?: Resource;
   courses: Course[];
@@ -1417,6 +1393,7 @@ function DetailPanel({
   onRevised: (resource: Resource) => void;
   onDelete: (id: string) => void;
   onOpen: (resource: Resource) => void;
+  simple?: boolean;
 }) {
   const [tagText, setTagText] = useState("");
 
@@ -1449,6 +1426,42 @@ function DetailPanel({
         </div>
       </div>
 
+      {simple ? (
+        <div className="simple-detail">
+          <div className={resource.status === "done" ? "simple-status done" : "simple-status"}>
+            {resource.status === "done" ? "Finished" : "Not finished"}
+          </div>
+
+          {resource.sourceUrl && (
+            <a className="open-link" href={resource.sourceUrl} target="_blank" rel="noreferrer">
+              <Link2 size={16} />
+              Open source
+            </a>
+          )}
+
+          {resource.fileMeta && (
+            <div className="file-note">
+              <FileText size={16} />
+              {resource.fileMeta.name} - {formatFileSize(resource.fileMeta.size)}
+            </div>
+          )}
+
+          <button
+            className="primary-wide"
+            type="button"
+            onClick={() => onUpdate(resource.id, { status: resource.status === "done" ? "inbox" : "done" })}
+          >
+            <Check size={16} />
+            {resource.status === "done" ? "Mark not finished" : "Mark finished"}
+          </button>
+
+          <button className="danger-action" type="button" onClick={() => onDelete(resource.id)}>
+            <Trash2 size={16} />
+            Delete
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="field-row two">
         <ThemedSelect
           label="Type"
@@ -1597,6 +1610,8 @@ function DetailPanel({
           Delete
         </button>
       </div>
+        </>
+      )}
     </aside>
   );
 }
