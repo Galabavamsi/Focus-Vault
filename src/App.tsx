@@ -158,6 +158,15 @@ const detailViewKeys: ViewKey[] = ["today", "dump", "inbox", "courses", "library
 const statsViewKeys: ViewKey[] = ["today", "library", "review"];
 const captureViewKeys: ViewKey[] = ["today", "dump", "inbox", "library"];
 
+function defaultCourseTitle(courses: Course[]) {
+  const existing = new Set(courses.map((course) => course.title.trim().toLowerCase()));
+  if (!existing.has("new course")) return "New course";
+
+  let index = 2;
+  while (existing.has(`new course ${index}`)) index += 1;
+  return `New course ${index}`;
+}
+
 export function App() {
   const [data, setData] = useState<AppData>(() => loadData());
   const [view, setView] = useState<ViewKey>("today");
@@ -438,8 +447,7 @@ export function App() {
 
   function createCourse(event: FormEvent) {
     event.preventDefault();
-    const title = courseTitle.trim();
-    if (!title) return;
+    const title = courseTitle.trim() || defaultCourseTitle(data.courses);
     const course: Course = {
       id: uid("course"),
       title,
@@ -1221,7 +1229,7 @@ function CourseBoard({
     <div className="course-area">
       <form className="new-course" onSubmit={onCreateCourse}>
         <FolderPlus size={18} />
-        <input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} placeholder="Create course tile" />
+        <input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} placeholder="Course name or leave blank" />
         <button type="submit">Add course</button>
       </form>
 
