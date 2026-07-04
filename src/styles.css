@@ -373,7 +373,7 @@ button {
 .search-box,
 .capture-form,
 .stat,
-.new-course,
+.new-course-button,
 .resource-card,
 .dump-intro,
 .dump-lane,
@@ -428,7 +428,6 @@ button {
 
 .search-box input,
 .capture-form input,
-.new-course input,
 .field input,
 .field select,
 .field-row select,
@@ -465,7 +464,6 @@ button {
 }
 
 .capture-form button,
-.new-course button,
 .review-box button,
 .open-link,
 .resource-footer button,
@@ -1199,18 +1197,27 @@ button {
   white-space: nowrap;
 }
 
-.new-course {
+.new-course-button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  padding: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 0 14px;
   margin-bottom: 14px;
+  color: var(--text);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: left;
 }
 
-.new-course input {
-  min-height: 40px;
+.new-course-button svg:last-child {
+  justify-self: end;
+  color: var(--accent-3);
 }
 
 .course-grid {
@@ -1220,6 +1227,7 @@ button {
 }
 
 .course-tile {
+  position: relative;
   padding: 16px;
   border-radius: 8px;
   border-top: 4px solid var(--course);
@@ -1232,47 +1240,21 @@ button {
   margin-bottom: 12px;
 }
 
-.course-head h2 {
+.course-head h3,
+.course-head p {
   margin: 0;
-  font-size: 20px;
 }
 
-.course-title-input,
-.course-input,
-.course-goal-input,
-.course-date-field input {
-  width: 100%;
-  min-width: 0;
-  color: var(--text);
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.course-title-input {
+.course-head h3 {
   font-size: 20px;
   font-weight: 800;
   line-height: 1.2;
 }
 
-.course-input,
-.course-goal-input {
+.course-head p {
+  margin-top: 5px;
   color: var(--muted);
   line-height: 1.45;
-}
-
-.course-input {
-  margin: 5px 0 0;
-}
-
-.course-goal-input {
-  min-height: 70px;
-  margin: 12px 0 0;
-  padding: 10px;
-  resize: vertical;
-  background: var(--glass-soft);
-  border: 1px solid var(--control-border);
-  border-radius: 7px;
 }
 
 .course-head span {
@@ -1281,13 +1263,72 @@ button {
   font-weight: 800;
 }
 
-.course-tools {
+.course-card-actions {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 8px;
+}
+
+.course-options-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--text);
+  background: var(--button-soft);
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+}
+
+.course-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 5px;
+  width: 170px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--glass-strong) 94%, var(--bg-mid));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(22px) saturate(160%);
+}
+
+.course-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 750;
+}
+
+.course-menu button:hover {
+  background: var(--button-soft);
+}
+
+.course-menu .danger-menu-item {
+  color: #ffb4b4;
+}
+
+.course-summary {
+  min-height: 58px;
+  margin: 12px 0 0;
+  padding: 10px;
+  color: var(--muted);
+  line-height: 1.45;
+  background: var(--glass-soft);
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
 }
 
 .color-swatches {
@@ -1935,12 +1976,45 @@ button {
   display: grid;
   gap: 12px;
   width: min(520px, 100%);
+  max-height: calc(100vh - 40px);
   padding: 18px;
+  overflow: auto;
   background: var(--glass-strong);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(24px) saturate(160%);
+}
+
+.course-modal {
+  width: min(620px, 100%);
+  gap: 14px;
+}
+
+.course-modal .field textarea {
+  min-height: 92px;
+}
+
+.course-modal-colors {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.course-modal-colors .color-swatches {
+  padding: 10px;
+  background: var(--control);
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
 }
 
 .modal-head {

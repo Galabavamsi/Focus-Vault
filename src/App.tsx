@@ -25,8 +25,10 @@ import {
   ListChecks,
   MessageSquare,
   Moon,
+  MoreVertical,
   NotebookPen,
   Pause,
+  Pencil,
   Play,
   Plus,
   RotateCcw,
@@ -97,6 +99,13 @@ type ViewKey =
   | "assistant"
   | "insights";
 type Theme = "light" | "dark";
+type CourseDraft = {
+  title: string;
+  currentModule: string;
+  goal: string;
+  targetDate: string;
+  color: string;
+};
 
 const viewSections: Array<{ title: string; items: Array<{ key: ViewKey; label: string; icon: typeof BookOpen }> }> = [
   {
@@ -167,6 +176,26 @@ function defaultCourseTitle(courses: Course[]) {
   return `New course ${index}`;
 }
 
+function newCourseDraft(courses: Course[]): CourseDraft {
+  return {
+    title: "",
+    currentModule: "Getting organized",
+    goal: "Collect materials, track progress, and revise on schedule.",
+    targetDate: "",
+    color: courseColors[courses.length % courseColors.length],
+  };
+}
+
+function draftFromCourse(course: Course): CourseDraft {
+  return {
+    title: course.title,
+    currentModule: course.currentModule,
+    goal: course.goal,
+    targetDate: dateInputValue(course.targetDate),
+    color: course.color,
+  };
+}
+
 export function App() {
   const [data, setData] = useState<AppData>(() => loadData());
   const [view, setView] = useState<ViewKey>("today");
@@ -174,7 +203,8 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string>(() => loadData().resources[0]?.id ?? "");
   const [captureText, setCaptureText] = useState("");
   const [captureTitle, setCaptureTitle] = useState("");
-  const [courseTitle, setCourseTitle] = useState("");
+  const [courseModal, setCourseModal] = useState<{ mode: "create" | "edit"; courseId?: string } | null>(null);
+  const [courseDraft, setCourseDraft] = useState<CourseDraft>(() => newCourseDraft(loadData().courses));
   const [newCheckText, setNewCheckText] = useState("");
   const [notice, setNotice] = useState("");
   const [assistantPrompt, setAssistantPrompt] = useState("");
@@ -445,25 +475,55 @@ export function App() {
     setView("dump");
   }
 
-  function createCourse(event: FormEvent) {
+  function openCreateCourse() {
+    setCourseDraft(newCourseDraft(data.courses));
+    setCourseModal({ mode: "create" });
+  }
+
+  function openEditCourse(course: Course) {
+    setCourseDraft(draftFromCourse(course));
+    setCourseModal({ mode: "edit", courseId: course.id });
+  }
+
+  function closeCourseModal() {
+    setCourseModal(null);
+  }
+
+  function saveCourse(event: FormEvent) {
     event.preventDefault();
-    const title = courseTitle.trim() || defaultCourseTitle(data.courses);
-    const course: Course = {
-      id: uid("course"),
+    const existingCourses = courseModal?.courseId ? data.courses.filter((course) => course.id !== courseModal.courseId) : data.courses;
+    const title = courseDraft.title.trim() || defaultCourseTitle(existingCourses);
+    const patch = {
       title,
-      color: courseColors[data.courses.length % courseColors.length],
-      goal: "Collect materials, track progress, and revise on schedule.",
-      currentModule: "Getting organized",
-      createdAt: todayIso(),
+      color: courseDraft.color,
+      goal: courseDraft.goal.trim() || "Collect materials, track progress, and revise on schedule.",
+      currentModule: courseDraft.currentModule.trim() || "Getting organized",
+      targetDate: dateInputToIso(courseDraft.targetDate),
       updatedAt: todayIso(),
     };
-    commitData((current) =>
-      appendActivity(
-        { ...current, courses: [course, ...current.courses] },
-        makeActivity("created_course", `Created course ${course.title}`, { courseId: course.id, category: "course", points: 3 }),
-      ),
-    );
-    setCourseTitle("");
+
+    if (courseModal?.mode === "edit" && courseModal.courseId) {
+      commitData((current) => ({
+        ...current,
+        courses: current.courses.map((course) => (course.id === courseModal.courseId ? { ...course, ...patch } : course)),
+      }));
+      setNotice("Course updated.");
+    } else {
+      const course: Course = {
+        id: uid("course"),
+        ...patch,
+        createdAt: todayIso(),
+      };
+      commitData((current) =>
+        appendActivity(
+          { ...current, courses: [course, ...current.courses] },
+          makeActivity("created_course", `Created course ${course.title}`, { courseId: course.id, category: "course", points: 3 }),
+        ),
+      );
+      setNotice("Course created.");
+    }
+
+    setCourseModal(null);
     setView("courses");
   }
 
@@ -959,12 +1019,10 @@ export function App() {
                   <CourseBoard
                     courses={data.courses}
                     resources={data.resources}
-                    onCreateCourse={createCourse}
-                    courseTitle={courseTitle}
-                    setCourseTitle={setCourseTitle}
+                    onCreateCourse={openCreateCourse}
                     onUpload={handleFiles}
                     onSelect={(id) => setSelectedId(id)}
-                    onUpdateCourse={updateCourse}
+                    onEditCourse={openEditCourse}
                     onDeleteCourse={deleteCourse}
                   />
                 )}
@@ -1066,6 +1124,15 @@ export function App() {
           providerStatus={providerStatus}
           onSaveProvider={saveProviderSettings}
           onClose={() => setAssistantSettingsOpen(false)}
+        />
+      )}
+      {courseModal && (
+        <CourseModal
+          mode={courseModal.mode}
+          draft={courseDraft}
+          setDraft={setCourseDraft}
+          onSubmit={saveCourse}
+          onClose={closeCourseModal}
         />
       )}
     </div>
@@ -1208,30 +1275,28 @@ function CourseBoard({
   courses,
   resources,
   onCreateCourse,
-  courseTitle,
-  setCourseTitle,
   onUpload,
   onSelect,
-  onUpdateCourse,
+  onEditCourse,
   onDeleteCourse,
 }: {
   courses: Course[];
   resources: Resource[];
-  onCreateCourse: (event: FormEvent) => void;
-  courseTitle: string;
-  setCourseTitle: (value: string) => void;
+  onCreateCourse: () => void;
   onUpload: (event: ChangeEvent<HTMLInputElement>, courseId?: string) => void;
   onSelect: (id: string) => void;
-  onUpdateCourse: (id: string, patch: Partial<Course>) => void;
+  onEditCourse: (course: Course) => void;
   onDeleteCourse: (id: string) => void;
 }) {
+  const [openMenuId, setOpenMenuId] = useState("");
+
   return (
     <div className="course-area">
-      <form className="new-course" onSubmit={onCreateCourse}>
+      <button className="new-course-button" type="button" onClick={onCreateCourse}>
         <FolderPlus size={18} />
-        <input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} placeholder="Course name or leave blank" />
-        <button type="submit">Add course</button>
-      </form>
+        <span>New course</span>
+        <Plus size={18} />
+      </button>
 
       <div className="course-grid">
         {courses.map((course) => {
@@ -1243,60 +1308,54 @@ function CourseBoard({
             <article className="course-tile" key={course.id} style={{ "--course": course.color } as React.CSSProperties}>
               <div className="course-head">
                 <div>
-                  <input
-                    className="course-title-input"
-                    value={course.title}
-                    aria-label="Course title"
-                    onChange={(event) => onUpdateCourse(course.id, { title: event.target.value })}
-                  />
-                  <input
-                    className="course-input"
-                    value={course.currentModule}
-                    aria-label="Current module"
-                    onChange={(event) => onUpdateCourse(course.id, { currentModule: event.target.value })}
-                  />
+                  <h3>{course.title}</h3>
+                  <p>{course.currentModule}</p>
                 </div>
-                <span>{avg}%</span>
+                <div className="course-card-actions">
+                  <span>{avg}%</span>
+                  <button
+                    className="course-options-button"
+                    type="button"
+                    aria-label={`Options for ${course.title}`}
+                    onClick={() => setOpenMenuId((current) => (current === course.id ? "" : course.id))}
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+                  {openMenuId === course.id && (
+                    <div className="course-menu">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenMenuId("");
+                          onEditCourse(course);
+                        }}
+                      >
+                        <Pencil size={15} />
+                        Edit course
+                      </button>
+                      <button
+                        className="danger-menu-item"
+                        type="button"
+                        onClick={() => {
+                          setOpenMenuId("");
+                          onDeleteCourse(course.id);
+                        }}
+                      >
+                        <Trash2 size={15} />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="progress-line">
                 <span style={{ width: `${avg}%` }} />
               </div>
-              <textarea
-                className="course-goal-input"
-                value={course.goal}
-                aria-label="Course goal"
-                onChange={(event) => onUpdateCourse(course.id, { goal: event.target.value })}
-              />
-              <div className="course-tools">
-                <div className="color-swatches" aria-label="Course color">
-                  {courseColors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      aria-label={`Use course color ${color}`}
-                      className={course.color === color ? "selected" : ""}
-                      style={{ "--swatch": color } as React.CSSProperties}
-                      onClick={() => onUpdateCourse(course.id, { color })}
-                    />
-                  ))}
-                </div>
-                <button className="ghost-danger" type="button" onClick={() => onDeleteCourse(course.id)}>
-                  <Trash2 size={15} />
-                  Delete
-                </button>
-              </div>
+              <p className="course-summary">{course.goal}</p>
               <div className="course-meta">
                 <span>{courseResources.length} materials</span>
                 <span>Target {prettyDate(course.targetDate)}</span>
               </div>
-              <label className="course-date-field">
-                <span>Target date</span>
-                <input
-                  type="date"
-                  value={dateInputValue(course.targetDate)}
-                  onChange={(event) => onUpdateCourse(course.id, { targetDate: dateInputToIso(event.target.value) })}
-                />
-              </label>
               <label className="upload-inline">
                 <Upload size={16} />
                 Add PDFs, slides, images
@@ -1315,6 +1374,95 @@ function CourseBoard({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function CourseModal({
+  mode,
+  draft,
+  setDraft,
+  onSubmit,
+  onClose,
+}: {
+  mode: "create" | "edit";
+  draft: CourseDraft;
+  setDraft: (draft: CourseDraft) => void;
+  onSubmit: (event: FormEvent) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop">
+      <form className="provider-modal course-modal" onSubmit={onSubmit}>
+        <div className="modal-head">
+          <div>
+            <h2>{mode === "create" ? "Create course" : "Edit course"}</h2>
+            <p>Set the course tile once. You can change these details later from the options button.</p>
+          </div>
+          <button type="button" className="overlay-close inline" onClick={onClose} aria-label="Close course settings">
+            <X size={18} />
+          </button>
+        </div>
+
+        <label className="field">
+          Course name
+          <input
+            autoFocus
+            value={draft.title}
+            onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+            placeholder="Machine Learning, Algorithms, Semester 4..."
+          />
+        </label>
+
+        <label className="field">
+          Current module
+          <input
+            value={draft.currentModule}
+            onChange={(event) => setDraft({ ...draft, currentModule: event.target.value })}
+            placeholder="Week 1, Neural networks, Assignment prep..."
+          />
+        </label>
+
+        <label className="field">
+          Goal or description
+          <textarea
+            value={draft.goal}
+            onChange={(event) => setDraft({ ...draft, goal: event.target.value })}
+            placeholder="What should this course tile help you track?"
+          />
+        </label>
+
+        <label className="field">
+          Target date
+          <input type="date" value={draft.targetDate} onChange={(event) => setDraft({ ...draft, targetDate: event.target.value })} />
+        </label>
+
+        <div className="course-modal-colors">
+          <span>Tile color</span>
+          <div className="color-swatches" aria-label="Course color">
+            {courseColors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                aria-label={`Use course color ${color}`}
+                className={draft.color === color ? "selected" : ""}
+                style={{ "--swatch": color } as React.CSSProperties}
+                onClick={() => setDraft({ ...draft, color })}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button className="secondary-action" type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="primary-wide" type="submit">
+            <Check size={16} />
+            {mode === "create" ? "Create course" : "Save changes"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
